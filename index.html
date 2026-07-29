@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Inventario TI</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- LIBRERÍA PARA EXCEL -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- HEADER -->
+        <header class="header">
+            <div class="header-left">
+                <i class="fas fa-laptop-code header-icon"></i>
+                <h1>Inventario TI</h1>
+                <span class="badge" id="totalItems">0</span>
+            </div>
+            <div class="header-right">
+                <!-- Exportar Dropdown -->
+                <div class="btn-group">
+                    <button class="btn btn-secondary dropdown-toggle" id="btnExportarDropdown">
+                        <i class="fas fa-file-export"></i> Exportar ▼
+                    </button>
+                    <div class="dropdown-menu" id="dropdownExportar">
+                        <button class="dropdown-item" id="btnExportarJSON">
+                            <i class="fas fa-file-code"></i> JSON
+                        </button>
+                        <button class="dropdown-item" id="btnExportarCSV">
+                            <i class="fas fa-file-csv"></i> CSV
+                        </button>
+                        <button class="dropdown-item" id="btnExportarExcel">
+                            <i class="fas fa-file-excel"></i> Excel
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Importar JSON -->
+                <button class="btn btn-secondary" id="btnImportar">
+                    <i class="fas fa-file-import"></i> Importar JSON
+                </button>
+                
+                <!-- Importar Excel -->
+                <button class="btn btn-secondary" id="btnImportarExcel" style="background: #217346; color: white;">
+                    <i class="fas fa-file-excel"></i> Importar Excel
+                </button>
+                
+                <!-- Agregar -->
+                <button class="btn btn-primary" id="btnAgregar">
+                    <i class="fas fa-plus"></i> Nuevo Dispositivo
+                </button>
+            </div>
+        </header>
+
+        <!-- ESTADÍSTICAS -->
+        <section class="stats-grid">
+            <div class="stat-card">
+                <i class="fas fa-boxes stat-icon"></i>
+                <div>
+                    <span class="stat-label">Total</span>
+                    <span class="stat-value" id="totalStats">0</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-check-circle stat-icon" style="color: #10b981;"></i>
+                <div>
+                    <span class="stat-label">Disponibles</span>
+                    <span class="stat-value" id="disponiblesStats">0</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-user-check stat-icon" style="color: #3b82f6;"></i>
+                <div>
+                    <span class="stat-label">Asignados</span>
+                    <span class="stat-value" id="asignadosStats">0</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-tools stat-icon" style="color: #f59e0b;"></i>
+                <div>
+                    <span class="stat-label">En Reparación</span>
+                    <span class="stat-value" id="reparacionStats">0</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- FILTROS -->
+        <section class="filters-section">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Buscar por serial, modelo, marca..." class="search-input">
+            </div>
+            <div class="filters-group">
+                <select id="filterTipo" class="filter-select">
+                    <option value="">Todos los tipos</option>
+                    <option value="Laptop">Laptop</option>
+                    <option value="Computadora">Computadora</option>
+                    <option value="Monitor">Monitor</option>
+                    <option value="Tablet">Tablet</option>
+                    <option value="Impresora">Impresora</option>
+                </select>
+                <select id="filterEstado" class="filter-select">
+                    <option value="">Todos los estados</option>
+                    <option value="Disponible">Disponible</option>
+                    <option value="Asignado">Asignado</option>
+                    <option value="Reparación">En Reparación</option>
+                    <option value="Baja">Dado de Baja</option>
+                </select>
+                <button class="btn btn-secondary" id="btnLimpiarFiltros">
+                    <i class="fas fa-undo"></i> Limpiar
+                </button>
+            </div>
+        </section>
+
+        <!-- TABLA -->
+        <section class="table-container">
+            <div class="table-header">
+                <span>Listado de Dispositivos</span>
+                <span id="itemsMostrados" class="items-counter">Mostrando 0 items</span>
+            </div>
+            <div class="table-wrapper">
+                <table id="inventarioTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Tipo</th>
+                            <th>Marca</th>
+                            <th>Modelo</th>
+                            <th>Serial</th>
+                            <th>Ubicación</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaBody">
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <!-- MODAL AGREGAR/EDITAR -->
+    <div class="modal" id="modalForm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Agregar Dispositivo</h2>
+                <button class="modal-close" id="btnCerrarModal">&times;</button>
+            </div>
+            <form id="deviceForm">
+                <input type="hidden" id="editId">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="formTipo">Tipo *</label>
+                        <select id="formTipo" required>
+                            <option value="">Seleccionar...</option>
+                            <option value="Laptop">Laptop</option>
+                            <option value="Computadora">Computadora</option>
+                            <option value="Monitor">Monitor</option>
+                            <option value="Tablet">Tablet</option>
+                            <option value="Impresora">Impresora</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="formMarca">Marca *</label>
+                        <input type="text" id="formMarca" placeholder="Ej: Dell, HP, Lenovo" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="formModelo">Modelo *</label>
+                        <input type="text" id="formModelo" placeholder="Ej: Latitude 5420" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="formSerial">Serial *</label>
+                        <input type="text" id="formSerial" placeholder="Número de serie" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="formUbicacion">Ubicación</label>
+                        <input type="text" id="formUbicacion" placeholder="Ej: Oficina 3B, Bodega A">
+                    </div>
+                    <div class="form-group">
+                        <label for="formEstado">Estado</label>
+                        <select id="formEstado">
+                            <option value="Disponible">Disponible</option>
+                            <option value="Asignado">Asignado</option>
+                            <option value="Reparación">En Reparación</option>
+                            <option value="Baja">Dado de Baja</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="btnCancelar">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="btnGuardar">
+                        <i class="fas fa-save"></i> Guardar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL CONFIRMAR ELIMINAR -->
+    <div class="modal" id="modalConfirmar">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h2>Confirmar Eliminación</h2>
+                <button class="modal-close" id="btnCerrarConfirmar">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de eliminar el dispositivo <strong id="confirmarSerial"></strong>?</p>
+                <p style="color: #ef4444; font-size: 0.9rem;">Esta acción no se puede deshacer.</p>
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-secondary" id="btnCancelarEliminar">Cancelar</button>
+                <button class="btn btn-danger" id="btnConfirmarEliminar">
+                    <i class="fas fa-trash"></i> Eliminar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="toastContainer"></div>
+
+    <!-- SCRIPTS -->
+    <script src="js/data.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
